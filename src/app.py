@@ -11,6 +11,8 @@ from fastapi.responses import RedirectResponse
 import os
 from pathlib import Path
 
+from typing import Optional
+
 app = FastAPI(title="Mergington High School API",
               description="API for viewing and signing up for extracurricular activities")
 
@@ -19,6 +21,7 @@ current_dir = Path(__file__).parent
 app.mount("/static", StaticFiles(directory=os.path.join(Path(__file__).parent,
           "static")), name="static")
 
+import re
 # In-memory activity database
 activities = {
     "Chess Club": {
@@ -84,8 +87,42 @@ def root():
 
 
 @app.get("/activities")
-def get_activities():
-    return activities
+def get_activities(
+    category: Optional[str] = None,
+    sort_by: Optional[str] = None,
+    search: Optional[str] = None
+):
+    """
+    Get activities with optional filtering, sorting, and search.
+    Args:
+        category (str, optional): Filter by category (not implemented, placeholder)
+        sort_by (str, optional): Sort by 'name' or 'schedule'
+        search (str, optional): Free text search in name or description
+    Returns:
+        dict: Filtered and sorted activities
+    """
+    filtered = activities.copy()
+
+    # Free text search
+    if search:
+        pattern = re.compile(re.escape(search), re.IGNORECASE)
+        filtered = {
+            name: info for name, info in filtered.items()
+            if pattern.search(name) or pattern.search(info["description"])
+        }
+
+    # Sorting
+    if sort_by == "name":
+        filtered = dict(sorted(filtered.items(), key=lambda x: x[0].lower()))
+    elif sort_by == "schedule":
+        filtered = dict(sorted(filtered.items(), key=lambda x: x[1]["schedule"]))
+
+    # Category filter (placeholder, not implemented)
+    if category:
+        # If you add a 'category' field to activities, filter here
+        pass
+
+    return filtered
 
 
 @app.post("/activities/{activity_name}/signup")
